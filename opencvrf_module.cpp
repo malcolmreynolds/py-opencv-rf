@@ -31,12 +31,16 @@ static PyObject *opencvrf_train(PyObject* self, PyObject *args) {
         printf("no training options supplied, using defaults.\n");
         training_options = create_default_training_options();
     }
-
+    /*
     printf("objects supplied:\nx=%p\ny=%p\nopts=%p\n",
            training_data, training_labels, training_options);
     
     printf("training options as number: %d\n", *((int *)training_options));
-    
+    */
+
+    printf("training options:\n");
+    printf("max_depth = %d\n", training_options->max_depth);
+    printf("min_sample_count = %d\n", training_options->min_sample_count);
     Py_RETURN_NONE;
 }
     

@@ -2,10 +2,13 @@
 
 #include "opencvrf_training_opts.h"
 #include "assert.h"
+#include "except.h"
 
 extern PyObject *InvalidTrainingOptionsError;
 
-#define DEBUG
+#define SET_TRAINING_OPTIONS_ERROR(msg) SET_ERROR_STRING(InvalidTrainingOptionsError, msg)
+
+//#define DEBUG
 
 //maximum depth of each tree
 const int DEFAULT_MAX_DEPTH = 25;
@@ -54,7 +57,7 @@ typedef enum option_type {
     
 
 typedef struct dict_option_parse_info {
-    char* name;
+    const char* name;
     option_type type;
     void *var;
 };
@@ -64,30 +67,75 @@ const int FAILURE = NULL;
 const int SUCCESS = 1;
 
  
-int parse_int_option_from_object(PyObject* obj, int* dest) {
+int parse_int_option_from_py_object(PyObject* obj, int* dest) {
     PY_ASSERT(obj != NULL, "parse_int_option passed a null obj");
     PY_ASSERT(dest != NULL, "parse_int_option passed a null dest");
-    *dest = 1;
+    if (!PyInt_Check(obj)) {
+        SET_TRAINING_OPTIONS_ERROR("object passed into parse_int_option failed PyInt_Check()");
+        return FAILURE;
+    }
+
+    //it appears all I can do is cast to long? Weird. Will hopefully work anyway
+    long val = PyInt_AsLong(obj);
+    if ((val == -1) && PyErr_Occurred()) {
+        return FAILURE;
+    }
+
+    if (val > ((long)0x7FFFFFFF)) { //check for overflow - FIXME - what is the constant for this called!!!??
+        SET_TRAINING_OPTIONS_ERROR("object passed into parse_int_option is too big");
+        return FAILURE;
+    }
+    *dest = (int) val;
     return SUCCESS;
 }   
 
-int parse_float_option_from_object(PyObject* obj, float* dest) {
+int parse_float_option_from_py_object(PyObject* obj, float* dest) {
     PY_ASSERT(obj != NULL,"parse_float_option passed a null obj");
     PY_ASSERT(dest != NULL,"parse_float_option passed a null dest");
-    *dest = 1.0f;
+    if (!PyFloat_Check(obj)) {
+        SET_TRAINING_OPTIONS_ERROR("object passed into parse_float_option failed PyFloat_Check()");
+        return FAILURE;
+    }
+
+    double val = PyFloat_AsDouble(obj);
+    if (PyErr_Occurred()) {
+        return FAILURE;
+    }
+   
+    if (val > ((double)FLT_MAX)) {
+        SET_TRAINING_OPTIONS_ERROR("object passed into parse_float_option is too big");
+        return FAILURE;
+    }
+    
+    *dest = (float) val;
     return SUCCESS;
 }
 
-int parse_bool_option_from_object(PyObject* obj, bool* dest) {
+int parse_bool_option_from_py_object(PyObject* obj, bool* dest) {
     PY_ASSERT(obj != NULL, "parse_bool_option was passed a null obj");
     PY_ASSERT(dest != NULL, "parse_bool_option was passed a null dest");
-    *dest = true;
-    return SUCCESS;
+    if (!PyBool_Check(obj)) {
+        SET_TRAINING_OPTIONS_ERROR("object passed parse_bool_option failed PyBool_Check()");
+        return FAILURE;
+    }
+
+    if (obj == Py_False) {
+        *dest = false;
+        return SUCCESS;
+    }
+    else if (obj == Py_True) {
+        *dest = true;
+        return SUCCESS;
+    }
+    else {
+        SET_TRAINING_OPTIONS_ERROR("object passed to parse_bool_option not a bool");
+        return FAILURE;
+    }
 }
         
 
-int parse_py_dict_to_training_options(PyObject *option_dict, void *address) {
-    printf("inside parse_py_dict_to_training_options, inputs are options=%p address=%p\n", option_dict, address);
+int parse_py_dict_to_training_options(PyObject *option_dict, void *output_address) {
+    printf("inside parse_py_dict_to_training_options, inputs are options=%p output_address=%p\n", option_dict, output_address);
     if (!PyDict_Check(option_dict)) {
         PyErr_SetString(InvalidTrainingOptionsError, "Object provided for training options is not a dictionary");
         return 0;
@@ -137,16 +185,18 @@ int parse_py_dict_to_training_options(PyObject *option_dict, void *address) {
 #endif
         choice = PyDict_GetItemString(option_dict, all_options[i].name);
         if (choice != NULL) {
+#ifdef DEBUG
             printf("%s present!\n", all_options[i].name);
+#endif
             switch(all_options[i].type) {
             case OP_INT:
-                status = parse_int_option_from_object(choice, (int *)(all_options[i].var));
+                status = parse_int_option_from_py_object(choice, (int *)all_options[i].var);
                 break;
-            case OP_FLOAT:
-                status = parse_float_option_from_object(choice, (float *)(all_options[i].var));
+            case OP_FLOAT: 
+                status = parse_float_option_from_py_object(choice, (float *)all_options[i].var);
                 break;
-            case OP_BOOL:
-                status = parse_bool_option_from_object(choice, (bool *)(all_options[i].var));
+            case OP_BOOL: 
+                status = parse_bool_option_from_py_object(choice, (bool *)all_options[i].var);
                 break;
             case OP_FLOAT_ARRAY:
                 PyErr_SetString(InvalidTrainingOptionsError, "Object provided for float array. Not yet supported!");
@@ -160,6 +210,10 @@ int parse_py_dict_to_training_options(PyObject *option_dict, void *address) {
             //the exception should already be set, so just return NULL and it should propagate
             //back to the python interpreter
             if (status == NULL) {
+                //FIXME: coudl give a more descriptive error here by unsetting and resetting the exception
+                //thing with a string which says which option was misparsed. Not sure of the repercussions 
+                //(if any?) of overwriting the previously stored exception text?
+                printf("Error parsing the object passed in for option %s\n", all_options[i].name);
                 return NULL;
             }
         }
@@ -167,9 +221,16 @@ int parse_py_dict_to_training_options(PyObject *option_dict, void *address) {
         else {
             printf("not present.\n");
         }
-#endif
+#endif    
     }
+    CvRTParams *params = new CvRTParams(max_depth, min_sample_count, regression_accuracy,
+                                       use_surrogates, max_categories, priors,
+                                       calc_var_importance, num_active_vars, max_tree_count,
+                                       forest_accuracy, term_criteria_type);
+    //this is a bit gnarly.. hopefully it's right?
+    CvRTParams **out = (CvRTParams **)output_address;
+    *out = params;
     
-    return 1;
+    return SUCCESS;
 }
 
