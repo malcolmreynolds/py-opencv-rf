@@ -1,7 +1,8 @@
 from distutils.core import setup, Extension
 
-c_module = Extension('_opencvrf',
-                    sources = ['opencvrf_module.cpp', 'opencvrf_training_opts.cpp'])
+c_module = Extension('opencvrf',
+                    sources = ['opencvrf_module.cpp', 'opencvrf_training_opts.cpp'],
+                    include_dirs = ['/usr/local/include/opencv','/usr/local/include' ])
 
 
 
