@@ -69,9 +69,7 @@ PyMODINIT_FUNC initopencvrf(void) {
         return;
     }
 
-    printf("before import array\n");
     import_array();
-    printf("after import array\n");
 
     InvalidTrainingOptionsError = PyErr_NewException("opencvrf.invalid_training_options_error", NULL, NULL);
     Py_INCREF(InvalidTrainingOptionsError);
