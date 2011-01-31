@@ -2,6 +2,7 @@
 
 #include "opencvrf_training_opts.h"
 #include "assert.h"
+#include "common.h"
 #include "except.h"
 
 extern PyObject *InvalidTrainingOptionsError;
@@ -62,14 +63,11 @@ typedef struct dict_option_parse_info {
     void *var;
 };
 
-//because NULL is failutre
-const int FAILURE = NULL;
-const int SUCCESS = 1;
 
  
 int parse_int_option_from_py_object(PyObject* obj, int* dest) {
-    PY_ASSERT(obj != NULL, "parse_int_option passed a null obj");
-    PY_ASSERT(dest != NULL, "parse_int_option passed a null dest");
+    PY_ASSERT(obj != NULL, "obj is null");
+    PY_ASSERT(dest != NULL, "dest is null");
     if (!PyInt_Check(obj)) {
         SET_TRAINING_OPTIONS_ERROR("object passed into parse_int_option failed PyInt_Check()");
         return FAILURE;
@@ -90,8 +88,8 @@ int parse_int_option_from_py_object(PyObject* obj, int* dest) {
 }   
 
 int parse_float_option_from_py_object(PyObject* obj, float* dest) {
-    PY_ASSERT(obj != NULL,"parse_float_option passed a null obj");
-    PY_ASSERT(dest != NULL,"parse_float_option passed a null dest");
+    PY_ASSERT(obj != NULL,"obj is null");
+    PY_ASSERT(dest != NULL,"dest is null");
     if (!PyFloat_Check(obj)) {
         SET_TRAINING_OPTIONS_ERROR("object passed into parse_float_option failed PyFloat_Check()");
         return FAILURE;
@@ -112,10 +110,10 @@ int parse_float_option_from_py_object(PyObject* obj, float* dest) {
 }
 
 int parse_bool_option_from_py_object(PyObject* obj, bool* dest) {
-    PY_ASSERT(obj != NULL, "parse_bool_option was passed a null obj");
-    PY_ASSERT(dest != NULL, "parse_bool_option was passed a null dest");
+    PY_ASSERT(obj != NULL, "obj is null");
+    PY_ASSERT(dest != NULL, "dest is null");
     if (!PyBool_Check(obj)) {
-        SET_TRAINING_OPTIONS_ERROR("object passed parse_bool_option failed PyBool_Check()");
+        SET_TRAINING_OPTIONS_ERROR("object passed to parse_bool_option failed PyBool_Check()");
         return FAILURE;
     }
 

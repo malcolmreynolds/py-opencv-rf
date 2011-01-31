@@ -1,8 +1,15 @@
-#include <Python.h>
+#include "Python.h"
+
+#define PY_ARRAY_UNIQUE_SYMBOL pyopencv_ARRAY_API
+#include "arrayobject.h"
 
 #include "opencvrf_module.h"
+#include "numpy_opencv_conversion.h"
+
+
 
 PyObject *InvalidTrainingOptionsError;
+PyObject *NumpyConversionFailedError;
 
 /*
 static PyObject * opencvrf_test(PyObject* self, PyObject *args) {
@@ -20,7 +27,10 @@ static PyObject *opencvrf_train(PyObject* self, PyObject *args) {
     const CvRTParams *training_options = NULL;
 
     //eventually fix this to use a converter function to convert numpy arrays into opencv. amazing!
-    if (!PyArg_ParseTuple(args, "OO|O&", &training_data, &training_labels, parse_py_dict_to_training_options, &training_options)) {
+    if (!PyArg_ParseTuple(args, "O&O&|O&", 
+                          parse_numpy_array_to_opencv, &training_data, 
+                          parse_numpy_array_to_opencv, &training_labels,
+                          parse_py_dict_to_training_options, &training_options)) {
         //failed parse == user didn't supply the compulsory arguments. Return null, and the exception
         //saved will suffice
         return NULL;
@@ -59,7 +69,15 @@ PyMODINIT_FUNC initopencvrf(void) {
         return;
     }
 
+    printf("before import array\n");
+    import_array();
+    printf("after import array\n");
+
     InvalidTrainingOptionsError = PyErr_NewException("opencvrf.invalid_training_options_error", NULL, NULL);
     Py_INCREF(InvalidTrainingOptionsError);
     PyModule_AddObject(m, "error", InvalidTrainingOptionsError);
+
+    NumpyConversionFailedError = PyErr_NewException("opencvrf.numpy_conversion_failed_error", NULL, NULL);
+    Py_INCREF(NumpyConversionFailedError);
+    PyModule_AddObject(m, "error", NumpyConversionFailedError);
 }
