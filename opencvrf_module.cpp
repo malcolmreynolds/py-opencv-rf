@@ -107,21 +107,76 @@ static PyObject *opencvrf_train(PyObject* self, PyObject *args) {
     cvReleaseMat(&training_labels);
     delete training_options;
 
-    set_forest_active(forest, num_variables);
+    set_forest_active(forest);
     return Py_BuildValue("l", forest);
 }
 
 static PyObject* opencvrf_load(PyObject* self, PyObject *args) {
     char* filename;
     char verbose = NULL;
-    if (!PyArg_Parse(args, "s|b", &filename, &verbose)) {
+    if (!PyArg_ParseTuple(args, "s|b", &filename, &verbose)) {
         return FAILURE;
+    }
+
+    if (verbose) {
+        printf("Trying to load forest from %s\n", filename);
     }
 
     CvRTrees *forest = new CvRTrees;
     forest->load(filename);
 
+    if (forest->get_tree_count() == 0) {
+        SET_RF_ERROR("Could not load random forest");
+        delete forest;
+        return FAILURE;
+    }
 
+    set_forest_active(forest);
+    return Py_BuildValue("l", forest);
+}
+
+static PyObject* opencvrf_save(PyObject* self, PyObject *args) {
+    CvRTrees* forest;
+    char* filename;
+    char verbose = NULL;
+    if (!PyArg_ParseTuple(args, "ls|b", (long **)&forest, &filename, &verbose)) {
+        return FAILURE;
+    }
+
+    if (verbose) {
+        printf("Trying to save forest to %s\n", filename);
+    }
+
+    if (!is_active_forest(forest)) {
+        SET_RF_ERROR("Tried to save a forest which isn't active");
+        return FAILURE;
+    }
+
+    forest->save(filename);
+
+    Py_RETURN_NONE;
+}
+
+static PyObject* opencvrf_delete(PyObject* self, PyObject *args) {
+    CvRTrees* forest;
+    if (!PyArg_ParseTuple(args, "l", (long **)&forest)) {
+        return FAILURE;
+    }
+
+    if (!is_active_forest(forest)) {
+        SET_RF_ERROR("Tried to delete a forest which isn't active");
+        return FAILURE;
+    }
+
+    forest->clear();
+    delete forest;
+
+    Py_RETURN_NONE;
+}
+
+
+
+    
 
 static PyObject* opencvrf_predict(PyObject* self, PyObject *args) {
     CvRTrees *forest = NULL;
@@ -138,11 +193,12 @@ static PyObject* opencvrf_predict(PyObject* self, PyObject *args) {
         return FAILURE;
     }
    
+    /*
     if (get_feature_dimensionality(forest) != predict_data->cols) {
         cvReleaseMat(&predict_data);
         SET_RF_ERROR("data for predictiong is of wrong dimensionality.");
         return FAILURE;
-    }
+        }*/
     
     CvMat sample; //use this to point at each row in turn
     unsigned int num_to_predict = predict_data->rows;
@@ -156,8 +212,8 @@ static PyObject* opencvrf_predict(PyObject* self, PyObject *args) {
         cvGetRow(predict_data, &sample, i);
         printf("predicting on row:\n");
         print_opencv_matrix(&sample);
-        NP_ARRAY_DB_1D(data, i) =  (double)forest->predict_variance(&sample, NULL);
-        printf("answer = %f\n", NP_ARRAY_DB_1D);
+        NP_ARRAY_DB_1D(results, i) =  (double)forest->predict_variance(&sample, NULL);
+        printf("answer = %f\n", NP_ARRAY_DB_1D(results, i));
     }
 
     cvReleaseMat(&predict_data);
@@ -166,15 +222,11 @@ static PyObject* opencvrf_predict(PyObject* self, PyObject *args) {
     return (PyObject *) results;
 }
 
-    
-
-      
-
-    
-
-
 static PyMethodDef OpencvrfMethods[] = {
     //    {"test", opencvrf_test, METH_VARARGS, "Test"},
+    {"delete", opencvrf_delete, METH_VARARGS, "Delete a forest"},
+    {"save", opencvrf_save, METH_VARARGS, "Save a forest"},
+    {"load", opencvrf_load, METH_VARARGS, "Load a forest"},
     {"train", opencvrf_train, METH_VARARGS, "Train a forest"},
     {"predict", opencvrf_predict, METH_VARARGS, "Predict using a forest"},
     {NULL, NULL, 0, NULL}
