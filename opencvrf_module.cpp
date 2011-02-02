@@ -201,10 +201,10 @@ static PyObject* opencvrf_predict(PyObject* self, PyObject *args) {
 
     for (unsigned int i=0; i<num_to_predict; i++) {
         cvGetRow(predict_data, &sample, i);
-        printf("predicting on row:\n");
-        print_opencv_matrix(&sample);
+        //        printf("predicting on row:\n");
+        //        print_opencv_matrix(&sample);
         NP_ARRAY_DB_1D(results, i) =  (double)forest->predict_variance(&sample, NULL);
-        printf("answer = %f\n", NP_ARRAY_DB_1D(results, i));
+        //        printf("answer = %f\n", NP_ARRAY_DB_1D(results, i));
     }
 
     cvReleaseMat(&predict_data);
@@ -215,12 +215,10 @@ static PyObject* opencvrf_predict(PyObject* self, PyObject *args) {
 
 static PyMethodDef OpencvrfMethods[] = {
     //    {"info", opencvrf_info, METH_VARARGS, "Information about a forest"},
-    /*
     {"delete", opencvrf_delete, METH_VARARGS, "Delete a forest"},
     {"save", opencvrf_save, METH_VARARGS, "Save a forest"},
     {"load", opencvrf_load, METH_VARARGS, "Load a forest"},
     {"predict", opencvrf_predict, METH_VARARGS, "Predict using a forest"},
-    */
     {"train", opencvrf_train, METH_VARARGS, "Train a forest"},
     {NULL, NULL, 0, NULL}
 };
