@@ -79,7 +79,7 @@ int parse_numpy_array_to_opencv(PyObject *array, void* out_address) {
         printf("%d element vector\n", sz);
 #endif        
 
-        CvMat* cvMat = cvCreateMat(ndims, 1, CV_32F);
+        CvMat* cvMat = cvCreateMat(sz, 1, CV_32F);
         for (unsigned int i=0; i<sz; i++) {
             cvMat->data.fl[i] = NP_ARRAY_DB_1D(real_array, i);
         }
