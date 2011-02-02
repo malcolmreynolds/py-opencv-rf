@@ -26,7 +26,8 @@ static CvMat* regression_var_type(unsigned int num_variables) {
     return var_type;
 }
 
-
+//static PyObject *opencvrf_info(PyObject* self, PyObject *args) {
+//    CvMat
 
 //opencvrf.train(x, y[, opts])
 // x: training data
@@ -46,6 +47,7 @@ static PyObject *opencvrf_train(PyObject* self, PyObject *args) {
                           &verbose)) {
         //failed parse == user didn't supply the compulsory arguments. Return null, and the exception
         //saved will suffice
+        printf("parsing args failed");
         if (training_data) cvReleaseMat(&training_data);
         if (training_labels) cvReleaseMat(&training_labels);
         if (training_options) delete training_options;
@@ -65,7 +67,7 @@ static PyObject *opencvrf_train(PyObject* self, PyObject *args) {
     unsigned int num_samples, num_variables, num_training_labels;
     num_samples = training_data->rows;
     num_variables = training_data->cols;
-    num_training_labels = training_data->rows;
+    num_training_labels = training_labels->rows;
 
     if (training_labels->cols != 1) {
         cvReleaseMat(&training_data);
@@ -81,7 +83,7 @@ static PyObject *opencvrf_train(PyObject* self, PyObject *args) {
         printf("training labels converted to opencv format. %d labels present\n", num_training_labels);
     }
 
-    if (training_labels->rows != num_samples) {
+    if (num_training_labels != num_samples) {
         cvReleaseMat(&training_data);
         cvReleaseMat(&training_labels);
         delete training_options;
@@ -174,10 +176,6 @@ static PyObject* opencvrf_delete(PyObject* self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
-
-
-    
-
 static PyObject* opencvrf_predict(PyObject* self, PyObject *args) {
     CvRTrees *forest = NULL;
     CvMat* predict_data = NULL;
@@ -192,13 +190,6 @@ static PyObject* opencvrf_predict(PyObject* self, PyObject *args) {
         SET_RF_ERROR("passed in a forest pointer which is not active!");
         return FAILURE;
     }
-   
-    /*
-    if (get_feature_dimensionality(forest) != predict_data->cols) {
-        cvReleaseMat(&predict_data);
-        SET_RF_ERROR("data for predictiong is of wrong dimensionality.");
-        return FAILURE;
-        }*/
     
     CvMat sample; //use this to point at each row in turn
     unsigned int num_to_predict = predict_data->rows;
@@ -223,12 +214,14 @@ static PyObject* opencvrf_predict(PyObject* self, PyObject *args) {
 }
 
 static PyMethodDef OpencvrfMethods[] = {
-    //    {"test", opencvrf_test, METH_VARARGS, "Test"},
+    //    {"info", opencvrf_info, METH_VARARGS, "Information about a forest"},
+    /*
     {"delete", opencvrf_delete, METH_VARARGS, "Delete a forest"},
     {"save", opencvrf_save, METH_VARARGS, "Save a forest"},
     {"load", opencvrf_load, METH_VARARGS, "Load a forest"},
-    {"train", opencvrf_train, METH_VARARGS, "Train a forest"},
     {"predict", opencvrf_predict, METH_VARARGS, "Predict using a forest"},
+    */
+    {"train", opencvrf_train, METH_VARARGS, "Train a forest"},
     {NULL, NULL, 0, NULL}
 };
 
@@ -238,8 +231,6 @@ PyMODINIT_FUNC initopencvrf(void) {
     if (m == NULL) {
         return;
     }
-
-    //std::set<int> myset;
 
     import_array();
 

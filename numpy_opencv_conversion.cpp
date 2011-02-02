@@ -62,7 +62,7 @@ int parse_numpy_array_to_opencv(PyObject *array, void* out_address) {
         for (unsigned int i=0; i < nrows; i++) {
             float* thisRowOut = cvMat->data.fl + ncols*i;
             for (unsigned int j=0; j < ncols; j++) {
-                thisRowOut[j] = *(double *)(real_array->data + i*real_array->strides[0] + j*real_array->strides[1]);
+                thisRowOut[j] = NP_ARRAY_DB_2D(real_array, i, j);
             }
         }
 #ifdef DEBUG
@@ -81,7 +81,7 @@ int parse_numpy_array_to_opencv(PyObject *array, void* out_address) {
 
         CvMat* cvMat = cvCreateMat(ndims, 1, CV_32F);
         for (unsigned int i=0; i<sz; i++) {
-            cvMat->data.fl[i] = *(double *)(real_array->data + i*real_array->strides[0]);
+            cvMat->data.fl[i] = NP_ARRAY_DB_1D(real_array, i);
         }
 #ifdef DEBUG
         printf("parsed matrix:\n");
